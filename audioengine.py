@@ -22,6 +22,7 @@ class AudioEngine(threading.Thread):
 		threading.Thread.__init__(self) 
 		self.logger.setLevel(logging.DEBUG)
 		self.serial = serial
+		pygame.mixer.pre_init(44100, 16, 2, 4096) 
 		pygame.mixer.init()
 		pygame.mixer.set_num_channels(8) 
 		self.setPack(pack)
@@ -90,27 +91,30 @@ class AudioEngine(threading.Thread):
 
 	# --------------------------------------------------------------------------------
 	def startSamples(self):
-		if self.pack is None:
-			return
+		try:
+			if self.pack is None:
+				return
 		
-		self.bpmCounter = 0 if self.bpmCounter==3 else self.bpmCounter+1
-		self.timer = threading.Timer(60.0/float(self.bpm), self.startSamples)
-		if not self.abort:
-			self.timer.start()
+			self.bpmCounter = 0 if self.bpmCounter==3 else self.bpmCounter+1
+			self.timer = threading.Timer(60.0/float(self.bpm), self.startSamples)
+			if not self.abort:
+				self.timer.start()
 
-		if self.bpmCounter == 0:
-			if not self.q.empty():
-				print("start")
-				while not self.q.empty():
-					grp, idx = self.q.get_nowait()
+			if self.bpmCounter == 0:
+				if not self.q.empty():
+					print("start")
+					while not self.q.empty():
+						grp, idx = self.q.get_nowait()
 
-					if self.currentSample[grp] != idx:
-						self.currentSample[grp] = idx
-						pygame.mixer.Channel(grp).stop()
-						if idx > 0:
-							print("  ", self.samples[grp][idx-1]["displayName"])
-							pygame.mixer.Channel(grp).play(pygame.mixer.Sound(self.samples[grp][idx-1]["name"]), loops=-1)
-				self.q.task_done()
+						if self.currentSample[grp] != idx and os.path.exists(self.samples[grp][idx-1]["name"]):
+							self.currentSample[grp] = idx
+							pygame.mixer.Channel(grp).stop()
+							if idx > 0:
+								print("  ", self.samples[grp][idx-1]["displayName"])
+								pygame.mixer.Channel(grp).play(pygame.mixer.Sound(self.samples[grp][idx-1]["name"]), loops=-1)
+					self.q.task_done()
+		except Exception as e:
+			print(e)
 
 	# --------------------------------------------------------------------------------
 	def run(self):

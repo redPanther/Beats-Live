@@ -42,9 +42,11 @@ class SamplePacks:
 
 		try:
 			p = self.packDir+"/"+self.packName
-			with open(p+'/'+self.pv+'.json') as json_data:
+			jsonFile = p+'/'+self.pv+'.json' if os.path.exists(p+'/'+self.pv+'.json') else p+'/'+self.packName+" "+self.pv+'.json'
+
+			with open(jsonFile) as json_data:
 				d = json.load(json_data)
-				for i in d["grids"][0]["pads"]:
+				for i in d["pads"] if d.get("pads") else d["grids"][0]["pads"]:
 					grp = int(i["col"])
 					idx = int(i["line"])
 					snd = str(i["sampleName"])
