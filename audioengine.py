@@ -47,11 +47,16 @@ class AudioEngine(threading.Thread):
 	def setPack(self,pack):
 		if pack is None:
 			return
+		self.stop()
 		if self.timer is not None:
 			self.timer.cancel()
 		self.pack    = pack
 		self.samples = self.pack.samples
 		self.bpm     = self.pack.bpm
+
+		for grp,v in enumerate(self.samples):
+			for idx, vv in enumerate(self.samples[grp]):
+				self.samples[grp][idx]["sound"] = pygame.mixer.Sound(self.samples[grp][idx]["name"])
 
 		self.timer = threading.Timer(60.0/float(self.bpm), self.startSamples)
 		self.timer.start()
@@ -82,10 +87,15 @@ class AudioEngine(threading.Thread):
 			self.queuedSample[grp] = i
 
 	# --------------------------------------------------------------------------------
-	def stop(self, grp):
+	def stop(self, grp=-1):
 		if self.pack is None:
 			return
-		if grp < len(self.samples):
+		if grp < 0:
+			pygame.mixer.stop()
+			#self.q.clear()
+			for grp in range(len(self.queuedSample)):
+				self.queuedSample[grp] = 0
+		elif grp < len(self.samples):
 			self.q.put([grp, 0])
 			self.queuedSample[grp] = 0
 
@@ -111,7 +121,8 @@ class AudioEngine(threading.Thread):
 							pygame.mixer.Channel(grp).stop()
 							if idx > 0:
 								print("  ", self.samples[grp][idx-1]["displayName"])
-								pygame.mixer.Channel(grp).play(pygame.mixer.Sound(self.samples[grp][idx-1]["name"]), loops=-1)
+								pygame.mixer.Channel(grp).play(self.samples[grp][idx-1]["sound"], loops=-1)
+								#pygame.mixer.Channel(grp).play(pygame.mixer.Sound(self.samples[grp][idx-1]["name"]), loops=-1)
 					self.q.task_done()
 		except Exception as e:
 			print(e)

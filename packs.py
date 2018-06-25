@@ -28,7 +28,7 @@ class SamplePacks:
 		ret = []
 		if os.path.isdir(self.packDir):
 			for d in [name for name in os.listdir(self.packDir) if os.path.isdir(os.path.join(self.packDir, name))]:
-				for s in ("6x4", "8x4"):
+				for s in ("6x4", "8x6"):
 					if os.path.exists(self.packDir+"/"+d+"/"+s+".json"):
 						ret.append((d,s,))
 
@@ -66,12 +66,12 @@ class SamplePacks:
 						self.samples[grp][idx] = sd
 						self.samples[grp][idx]['name'] = p+'/samples/'+self.samples[grp][idx]['name']
 						self.bpm = self.samples[grp][idx]['bpm']
-
+				print("loaded")
 		except Exception as e:
 			self.logger.error("error while loading sample pack (%s)" % (str(e)) )
 			self.samples.clear()
 
 if __name__ == '__main__':
-	p = SamplePacks()
+	p = SamplePacks("../packs")
 
 	print(p.getPacks())

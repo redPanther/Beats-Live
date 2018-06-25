@@ -28,12 +28,22 @@ class MainWindow(QMainWindow):
 		self.ui = uic.loadUi('mainwindow.ui', self)
 		self.showNormal()
 		
+		self.ui.cbPacks.clear()
+		for p in self.engine.getPack().getPacks():
+			self.ui.cbPacks.addItem(p[0]+" "+p[1])
+		self.ui.cbPacks.setCurrentText(self.engine.getPack().packName +" "+self.engine.getPack().pv)
+		print(self.engine.getPack().packName +" "+self.engine.getPack().pv)
 		listOfPushButtons = QtCore.QObject.findChildren(self.ui.frame_pads, QPushButton )
 		for obj in listOfPushButtons:
-			if str(obj.objectName()).startswith("bt"):
-				self.pad_list[str(obj.objectName())] = obj
+			objName = str(obj.objectName())
+			if objName.startswith("bt"):
+				self.pad_list[objName] = obj
 				obj.clicked.connect(self.btnClicked)
-				
+				group = int(objName[2])
+				loop  = int(objName[4])
+
+				if group < len(self.engine.samples) and loop < len(self.engine.samples[group]):
+					obj.setText(self.engine.samples[group][loop]["displayName"])
 		self.t = QtCore.QTimer()
 		self.t.setSingleShot(False)
 		self.t.timeout.connect(self.tick)
@@ -80,7 +90,17 @@ class MainWindow(QMainWindow):
 				if group>=0 and loop>0:
 					self.pad_list['bt'+str(group)+'_'+str(loop-1)].setStyleSheet('color: #ffffff;background-color: %s;' % (self.pad_color_list[group][0]))
 
+	# --------------------------------------------------------------------------------
+	@pyqtSlot()
+	def packChanged(self):
+		current = self.ui.cbPacks.currentText()
+		idx = current.rfind(" ")
+		packName    = current[:idx]
+		packVariant = current[idx+1:]
 		
-
-
+		pack = self.engine.getPack()
+		if (pack.packName + " " + pack.pv) != current:
+			print("load", current)
+			pack.load(packName, packVariant)
+			self.engine.setPack(pack)
 
