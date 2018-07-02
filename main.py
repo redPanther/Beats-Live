@@ -25,6 +25,7 @@ try:
 
 	if len(sys.argv) <= 2:
 		from mainwindow import *
+
 		app = QtWidgets.QApplication(sys.argv)
 		window = MainWindow(engine)
 		window.show()

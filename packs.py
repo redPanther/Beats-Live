@@ -64,6 +64,7 @@ class SamplePacks:
 							sd = json.load(json_data_snd)
 							#print(sd)
 						self.samples[grp][idx] = sd
+						self.samples[grp][idx]['pad'] = i
 						self.samples[grp][idx]['name'] = p+'/samples/'+self.samples[grp][idx]['name']
 						self.bpm = self.samples[grp][idx]['bpm']
 				print("loaded")

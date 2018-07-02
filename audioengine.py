@@ -16,6 +16,8 @@ class AudioEngine(threading.Thread):
 	queuedSample  = [-1,-1,-1,-1,-1,-1,-1,-1]
 	serial = None
 	serialInputEnabled = True
+	callback_beats = None
+	callback_sample = None
 
 	# --------------------------------------------------------------------------------
 	def __init__(self, pack=None, serial=None): 
@@ -24,13 +26,19 @@ class AudioEngine(threading.Thread):
 		self.serial = serial
 		pygame.mixer.pre_init(44100, 16, 2, 4096) 
 		pygame.mixer.init()
-		pygame.mixer.set_num_channels(8) 
+		pygame.mixer.set_num_channels(8)
 		self.setPack(pack)
 
 	# --------------------------------------------------------------------------------
 	def __del__(self):
 		if self.timer is not None:
 			self.timer.cancel()
+
+	def registerBeatsCounter(self,callback_beats=None):
+		self.callback_beats = callback_beats
+
+	def registerSampleChanged(self,callback_sample=None):
+		self.callback_sample = callback_sample
 
 	# --------------------------------------------------------------------------------
 	def serialEnabled(self, enabled):
@@ -57,6 +65,9 @@ class AudioEngine(threading.Thread):
 		for grp,v in enumerate(self.samples):
 			for idx, vv in enumerate(self.samples[grp]):
 				self.samples[grp][idx]["sound"] = pygame.mixer.Sound(self.samples[grp][idx]["name"])
+				gain = float(self.samples[grp][idx-1]["pad"]["gain"])
+				if gain < 1.0:
+					self.samples[grp][idx]["sound"].set_volume(gain)
 
 		self.timer = threading.Timer(60.0/float(self.bpm), self.startSamples)
 		self.timer.start()
@@ -91,10 +102,10 @@ class AudioEngine(threading.Thread):
 		if self.pack is None:
 			return
 		if grp < 0:
-			pygame.mixer.stop()
-			#self.q.clear()
 			for grp in range(len(self.queuedSample)):
+				self.q.put([grp,0])
 				self.queuedSample[grp] = 0
+			pygame.mixer.stop()
 		elif grp < len(self.samples):
 			self.q.put([grp, 0])
 			self.queuedSample[grp] = 0
@@ -110,22 +121,26 @@ class AudioEngine(threading.Thread):
 			if not self.abort:
 				self.timer.start()
 
+			if self.callback_beats is not None:
+				self.callback_beats(self.bpmCounter)
 			if self.bpmCounter == 0:
 				if not self.q.empty():
 					print("start")
 					while not self.q.empty():
 						grp, idx = self.q.get_nowait()
 
-						if self.currentSample[grp] != idx and os.path.exists(self.samples[grp][idx-1]["name"]):
+						if grp < len(self.currentSample) and self.currentSample[grp] != idx:
 							self.currentSample[grp] = idx
 							pygame.mixer.Channel(grp).stop()
-							if idx > 0:
-								print("  ", self.samples[grp][idx-1]["displayName"])
+							if idx > 0 and os.path.exists(self.samples[grp][idx-1]["name"]):
+								print("  ", self.samples[grp][idx-1]["displayName"]) # ,self.samples[grp][idx-1]["pad"]["gain"]
 								pygame.mixer.Channel(grp).play(self.samples[grp][idx-1]["sound"], loops=-1)
-								#pygame.mixer.Channel(grp).play(pygame.mixer.Sound(self.samples[grp][idx-1]["name"]), loops=-1)
+
 					self.q.task_done()
+					if self.callback_sample is not None:
+						self.callback_sample()
 		except Exception as e:
-			print(e)
+			print("startSamples", e)
 
 	# --------------------------------------------------------------------------------
 	def run(self):
